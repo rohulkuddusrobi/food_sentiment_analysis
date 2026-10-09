@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+
+{% block title %}Negative Feedback · Customer Sentiment BI{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1>Negative Feedback Analysis</h1>
+        <p class="page-subtitle">Built from rating-derived Negative reviews only; prediction history is never mixed in.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'home' %}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-speedometer2 me-1"></i>Overview
+        </a>
+        <a href="{% url 'reviews' %}?sentiment=Negative" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-funnel me-1"></i>Negative reviews
+        </a>
+    </div>
+</div>
+
+{% if not filters_valid %}
+<div class="alert alert-danger py-2 mb-3" role="alert">
+    {% for field, field_errors in filter_form.errors.items %}
+        {% for error in field_errors %}
+            <div>{% if field != '__all__' %}{{ field|capfirst }}: {% endif %}{{ error }}</div>
+        {% endfor %}
+    {% endfor %}
+    <div class="small mt-1">The invalid values were ignored and the unfiltered analysis is shown.</div>
+</div>
+{% endif %}
+
+<form method="get" class="card shadow-sm border-0 mb-3" role="search" aria-label="Negative feedback filters">
+    <div class="card-body py-2">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label small mb-1" for="{{ filter_form.q.id_for_label }}">Keyword</label>
+                {{ filter_form.q }}
+                {% for error in filter_form.q.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small mb-1" for="{{ filter_form.start_date.id_for_label }}">From</label>
+                {{ filter_form.start_date }}
+                {% for error in filter_form.start_date.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small mb-1" for="{{ filter_form.end_date.id_for_label }}">To</label>
+                {{ filter_form.end_date }}
+                {% for error in filter_form.end_date.errors %}<div class="invalid-feedback d-block" role="alert">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-primary btn-sm w-100">
+                    <i class="bi bi-funnel"></i><span class="d-none d-md-inline"> Apply</span>
+                </button>
+            </div>
+        </div>
+        <div class="row g-2 mt-1 align-items-center">
+            <div class="col-auto">
+                <a href="{% url 'negative_feedback' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
+                </a>
+            </div>
+            <div class="col-auto">
+                {% if filters_active %}
+                    <span class="badge text-bg-success">Filters active</span>
+                {% else %}
+                    <span class="text-muted small">No filters applied</span>
+                {% endif %}
+            </div>
+            <div class="col-auto text-muted small">
+                {% if filter_form.start_date.value %}<span class="badge text-bg-light border me-1">From {{ filter_form.start_date.value }}</span>{% endif %}
+                {% if filter_form.end_date.value %}<span class="badge text-bg-light border me-1">To {{ filter_form.end_date.value }}</span>{% endif %}
+            </div>
+        </div>
+    </div>
+</form>
+
+{% if not scope_total %}
+<div class="alert alert-warning py-3 mb-3">
+    <i class="bi bi-exclamation-triangle me-1"></i>No reviews match the selected filters, so no negative feedback analysis can be shown.
+</div>
+{% elif not negative_count %}
+<div class="alert alert-info py-3 mb-3">
+    <i class="bi bi-info-circle me-1"></i>No rating-derived Negative reviews match the selected filters.
+</div>
+{% endif %}
+
+<div class="row g-3 mb-3">
+    <div class="col-md-6 col-xl-3">
+        <div class="card shadow-sm border-0 kpi-card h-100">
+            <div class="card-body">
+                <div class="kpi-label">Negative reviews</div>
+                <div class="kpi-value">{{ negative_count }}</div>
+                <div class="kpi-note">of {{ scope_total }} review{{ scope_total|pluralize }} in scope</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card shadow-sm border-0 kpi-card h-100">
+            <div class="card-body">
+                <div class="kpi-label">Share of rated reviews</div>
+                <div class="kpi-value">{{ share_display }}</div>
+                <div class="kpi-note">{{ negative_count }} of {{ base }} with rating-derived sentiment</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card shadow-sm border-0 kpi-card h-100">
+            <div class="card-body">
+                <div class="kpi-label">Avg. rating (negative)</div>
+                <div class="kpi-value">{{ avg_rating_display }} <span class="kpi-suffix">/ 5</span></div>
+                <div class="kpi-note">n = {{ negative_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card shadow-sm border-0 kpi-card h-100">
+            <div class="card-body">
+                <div class="kpi-label">Most common rating</div>
+                {% if top_rating %}
+                    <div class="kpi-value">{{ top_rating.rating }}&#9733;</div>
+                    <div class="kpi-note">{{ top_rating.count }} review{{ top_rating.count|pluralize }} &middot; {{ top_rating.share_display }} of negatives</div>
+                {% else %}
+                    <div class="kpi-value">&mdash;</div>
+                    <div class="kpi-note">No rated negative reviews in scope</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header">
+                <span class="fw-semibold">Rating breakdown of negative reviews</span>
+                <div class="card-subtitle">Counts are rating-derived; share is of the {{ negative_count }} negative review{{ negative_count|pluralize }}.</div>
+            </div>
+            <div class="card-body pt-2">
+                {% for row in rating_breakdown %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small">
+                        <span>{{ row.rating }} star{{ row.count|pluralize }}</span>
+                        <span class="text-muted">{{ row.count }} &middot; {{ row.share_display }}</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-danger" role="progressbar"
+                             style="width: {% if row.share %}{{ row.share }}{% else %}0{% endif %}%"
+                             aria-valuenow="{% if row.share %}{{ row.share }}{% else %}0{% endif %}"
+                             aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-muted mb-0">No negative reviews in scope to break down.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header">
+                <span class="fw-semibold">Frequent terms in negative review text</span>
+                <div class="card-subtitle">Document frequency = sampled negative reviews containing the term.</div>
+            </div>
+            <div class="card-body pt-2">
+                {% if terms.terms %}
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    {% for item in terms.terms %}
+                    <span class="term-chip">{{ item.term }} <span class="term-chip-count">{{ item.documents }}</span></span>
+                    {% endfor %}
+                </div>
+                <p class="small text-muted mb-1">Sample: {{ terms.sampled }} of {{ terms.total }} negative review{{ terms.total|pluralize }}{% if terms.truncated %} (most recent {{ terms.sampled }}){% endif %}.</p>
+                <p class="small text-muted mb-1">{{ terms.method_note }}</p>
+                <p class="small mb-0"><i class="bi bi-info-circle text-warning me-1"></i>{{ terms.caveat }}</p>
+                {% else %}
+                <p class="text-muted mb-0">Not enough negative review text to extract frequent terms.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header">
+                <span class="fw-semibold">Evidence-based insights</span>
+                <div class="card-subtitle">Observations with sample size and denominator; no causal claims.</div>
+            </div>
+            <div class="card-body">
+                <ul class="insight-list">
+                    {% for insight in insights %}
+                    <li><i class="bi bi-clipboard-data text-primary"></i><span>{{ insight }}</span></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header">
+                <span class="fw-semibold">Representative negative reviews</span>
+                <div class="card-subtitle">Most recent {{ representative|length }} of {{ negative_count }} shown (limit {{ representative_limit }}).</div>
+            </div>
+            <div class="card-body">
+                {% if representative %}
+                <ul class="list-unstyled mb-0">
+                    {% for review in representative %}
+                    <li class="border-bottom pb-2 mb-2{% if forloop.last %} border-0 mb-0{% endif %}">
+                        <div class="d-flex flex-wrap gap-2 align-items-center small text-muted mb-1">
+                            <span>{{ review.rating_display }} rating</span>
+                            {% if review.review_date %}<span>&middot; {{ review.review_date|date:'Y-m-d' }}</span>{% endif %}
+                            {% if review.product_id %}<span>&middot; {{ review.product_id }}</span>{% endif %}
+                        </div>
+                        <div class="review-text small">{{ review.text|truncatechars:260 }}</div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted mb-0">No negative reviews to display.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

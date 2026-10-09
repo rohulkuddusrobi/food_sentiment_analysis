@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <h1>Upload Reviews</h1>
+    <p class="page-subtitle">Import customer reviews from a CSV file.</p>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-0">
+            <div class="card-header">
+                <i class="bi bi-upload me-2"></i>CSV Upload
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data" novalidate>
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="{{ form.file.id_for_label }}" class="form-label">
+                            {{ form.file.label }}
+                        </label>
+                        {{ form.file }}
+                        {% if form.file.errors %}
+                            <div class="invalid-feedback d-block" role="alert">
+                                {% for error in form.file.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                        {% if form.file.help_text %}
+                            <div class="form-text">{{ form.file.help_text }}</div>
+                        {% endif %}
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-box-arrow-up me-1"></i>Upload and import
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 mt-3">
+            <div class="card-header">Expected format</div>
+            <div class="card-body small">
+                <p class="mb-2"><strong>Required</strong></p>
+                <ul class="mb-3">
+                    <li><code>Text</code> &mdash; the review body</li>
+                </ul>
+                <p class="mb-2"><strong>Optional</strong></p>
+                <ul class="mb-3">
+                    <li><code>Score</code> &mdash; rating from 1 to 5</li>
+                    <li><code>ProductId</code></li>
+                    <li><code>Time</code> &mdash; review date</li>
+                    <li><code>Summary</code></li>
+                </ul>
+                <p class="mb-0 text-muted">
+                    Ratings 1&ndash;2 map to Negative, 3 to Neutral and 4&ndash;5 to Positive.
+                    Rows without a valid rating are imported without a sentiment label.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        {% if summary %}
+        <div class="card shadow-sm border-0">
+            <div class="card-header">Upload summary</div>
+            <div class="card-body">
+                <div class="row text-center g-2">
+                    <div class="col">
+                        <div class="text-muted small text-uppercase">Rows processed</div>
+                        <div class="fs-5 fw-semibold">{{ summary.processed }}</div>
+                    </div>
+                    <div class="col">
+                        <div class="text-muted small text-uppercase">Rows imported</div>
+                        <div class="fs-5 fw-semibold text-success">{{ summary.imported }}</div>
+                    </div>
+                    <div class="col">
+                        <div class="text-muted small text-uppercase">Duplicates skipped</div>
+                        <div class="fs-5 fw-semibold text-warning">{{ summary.duplicates }}</div>
+                    </div>
+                    <div class="col">
+                        <div class="text-muted small text-uppercase">Invalid rows</div>
+                        <div class="fs-5 fw-semibold text-danger">{{ summary.invalid }}</div>
+                    </div>
+                </div>
+
+                <hr>
+                <div class="small text-muted mb-2">
+                    Detected columns: {{ summary.columns|join:", "|default:"none" }}
+                    &middot; Batch size: {{ summary.batch_size }}
+                </div>
+                {% if summary.unrated %}
+                    <div class="small text-muted mb-2">
+                        {{ summary.unrated }} imported row(s) have no valid rating, so no sentiment label was assigned.
+                    </div>
+                {% endif %}
+
+                {% if summary.errors %}
+                    <div class="small fw-semibold text-uppercase text-muted mt-3 mb-1">Row errors</div>
+                    <ul class="small mb-0">
+                        {% for error in summary.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% if summary.invalid > summary.errors|length %}
+                        <div class="small text-muted mt-1">
+                            Showing first {{ summary.errors|length }} of {{ summary.invalid }} invalid rows.
+                        </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+            <div class="card shadow-sm border-0">
+                <div class="card-body text-muted">
+                    Upload a CSV file to see the import summary here.
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

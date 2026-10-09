@@ -1,0 +1,400 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1>Dashboard Overview</h1>
+        <p class="page-subtitle">
+            Rating-derived sentiment of imported reviews
+            {% if filter_active %}
+                &middot; {{ filtered_count }} of {{ total_all }} reviews in range
+            {% else %}
+                &middot; {{ total_all }} imported review{{ total_all|pluralize }}
+            {% endif %}
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'export_analytics' %}{% if filter_querystring %}?{{ filter_querystring }}{% endif %}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-download me-1"></i>Export summary CSV
+        </a>
+        <a href="{% url 'upload_reviews' %}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-upload me-1"></i>Upload CSV
+        </a>
+        <a href="{% url 'predict_review' %}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-cpu me-1"></i>Predict Sentiment
+        </a>
+    </div>
+</div>
+
+{% if filter_form.errors %}
+<div class="alert alert-danger py-2 mb-3" role="alert">
+    {% for field, field_errors in filter_form.errors.items %}
+        {% for error in field_errors %}
+            <div>{% if field != '__all__' %}{{ field|capfirst }}: {% endif %}{{ error }}</div>
+        {% endfor %}
+    {% endfor %}
+    <div class="small mt-1">The invalid values were ignored and no date filter was applied.</div>
+</div>
+{% endif %}
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-end" role="search" aria-label="Dashboard date filter">
+            <div class="col-auto">
+                <label class="form-label small mb-1" for="{{ filter_form.start_date.id_for_label }}">From</label>
+                {{ filter_form.start_date }}
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-1" for="{{ filter_form.end_date.id_for_label }}">To</label>
+                {{ filter_form.end_date }}
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-funnel me-1"></i>Apply
+                </button>
+            </div>
+            <div class="col-auto">
+                <a href="{% url 'home' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
+                </a>
+            </div>
+            <div class="col-auto">
+                {% if filter_active %}
+                    <span class="badge text-bg-success">Date filter active</span>
+                {% else %}
+                    <span class="text-muted small">Showing all imported reviews</span>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if kpis.total == 0 %}
+<div class="alert alert-info d-flex align-items-start gap-2 mb-4">
+    <i class="bi bi-inbox fs-5 mt-1"></i>
+    <div>
+        No reviews to analyse{% if filter_active %} for the selected date range{% endif %}.
+        <a href="{% url 'upload_reviews' %}" class="alert-link">Upload a CSV file</a>
+        to populate the dashboard.
+    </div>
+</div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card shadow-sm border-0 h-100 kpi-card">
+            <div class="card-body">
+                <div class="kpi-label">Total reviews</div>
+                <div class="kpi-value">{{ kpis.total }}</div>
+                <div class="kpi-note">
+                    {% if filter_active %}in selected range{% else %}imported records{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card shadow-sm border-0 h-100 kpi-card">
+            <div class="card-body">
+                <div class="kpi-label text-success">Positive</div>
+                <div class="kpi-value text-success">{{ kpis.positive }}</div>
+                <div class="kpi-note">{{ kpis.positive_pct_display }} of rated reviews</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card shadow-sm border-0 h-100 kpi-card">
+            <div class="card-body">
+                <div class="kpi-label text-danger">Negative</div>
+                <div class="kpi-value text-danger">{{ kpis.negative }}</div>
+                <div class="kpi-note">{{ kpis.negative_pct_display }} of rated reviews</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card shadow-sm border-0 h-100 kpi-card">
+            <div class="card-body">
+                <div class="kpi-label text-secondary">Neutral</div>
+                <div class="kpi-value text-secondary">{{ kpis.neutral }}</div>
+                <div class="kpi-note">{{ kpis.neutral_pct_display }} of rated reviews</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card shadow-sm border-0 h-100 kpi-card">
+            <div class="card-body">
+                <div class="kpi-label text-warning">Missing rating</div>
+                <div class="kpi-value text-warning">{{ kpis.unrated }}</div>
+                <div class="kpi-note">{{ kpis.unrated_pct_display }} of all reviews</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card shadow-sm border-0 h-100 kpi-card">
+            <div class="card-body">
+                <div class="kpi-label">Average rating</div>
+                <div class="kpi-value">{{ kpis.avg_rating_display }}<span class="kpi-suffix">/5</span></div>
+                <div class="kpi-note">from {{ kpis.rated }} valid rating{{ kpis.rated|pluralize }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header">
+                Sentiment distribution
+                <span class="fw-normal text-muted small">(rating-derived)</span>
+            </div>
+            <div class="card-body">
+                {% if charts.sentiment.has_data %}
+                    <div class="chart-box"><canvas id="sentimentChart"></canvas></div>
+                {% else %}
+                    <div class="chart-empty">No rating-derived sentiment data in this range.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header">
+                Rating distribution
+                <span class="fw-normal text-muted small">(score 1&ndash;5)</span>
+            </div>
+            <div class="card-body">
+                {% if charts.rating.has_data %}
+                    <div class="chart-box"><canvas id="ratingChart"></canvas></div>
+                {% else %}
+                    <div class="chart-empty">No valid ratings (1&ndash;5) in this range.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header">
+                Monthly review volume
+                <span class="fw-normal text-muted small">(valid review dates)</span>
+            </div>
+            <div class="card-body">
+                {% if charts.monthly.has_data %}
+                    <div class="chart-box"><canvas id="monthlyChart"></canvas></div>
+                {% else %}
+                    <div class="chart-empty">No reviews with a valid review date in this range.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header">Business insights</div>
+            <div class="card-body">
+                <ul class="insight-list mb-0">
+                    {% for insight in insights %}
+                        <li>
+                            <i class="bi bi-lightbulb text-warning"></i>
+                            <span>{{ insight }}</span>
+                        </li>
+                    {% empty %}
+                        <li><span class="text-muted">Insufficient data for insights.</span></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header">
+                Sentiment by rating
+                <span class="fw-normal text-muted small">(rating-derived)</span>
+            </div>
+            <div class="card-body">
+                {% if charts.sentiment_by_rating.has_data %}
+                    <div class="chart-box"><canvas id="sentimentByRatingChart"></canvas></div>
+                {% else %}
+                    <div class="chart-empty">No rated reviews available for this breakdown.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">Latest imported reviews</span>
+                <span class="fw-normal text-muted small">showing up to {{ preview_limit }}</span>
+            </div>
+            {% if latest_reviews %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Review</th>
+                                <th style="width: 70px;">Rating</th>
+                                <th style="width: 110px;">Sentiment</th>
+                                <th style="width: 110px;">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for review in latest_reviews %}
+                                <tr>
+                                    <td class="review-cell">{{ review.summary|default:review.text|truncatechars:90 }}</td>
+                                    <td>{{ review.rating_display }}</td>
+                                    <td>
+                                        {% if review.sentiment == 'Positive' %}
+                                            <span class="badge text-bg-success">{{ review.sentiment }}</span>
+                                        {% elif review.sentiment == 'Negative' %}
+                                            <span class="badge text-bg-danger">{{ review.sentiment }}</span>
+                                        {% elif review.sentiment == 'Neutral' %}
+                                            <span class="badge text-bg-secondary">{{ review.sentiment }}</span>
+                                        {% else %}
+                                            <span class="text-muted small">Not rated</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-muted small">
+                                        {% if review.review_date %}{{ review.review_date|date:'Y-m-d' }}{% else %}&mdash;{% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="card-body text-muted">
+                    No reviews to preview yet.
+                    <a href="{% url 'upload_reviews' %}">Upload a CSV</a> to get started.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ charts|json_script:"dashboard-chart-data" }}
+<script>
+(function () {
+    var payload = JSON.parse(document.getElementById('dashboard-chart-data').textContent);
+    if (typeof Chart === 'undefined') {
+        return;
+    }
+
+    var neutralColor = '#6c757d';
+    var gridColor = 'rgba(0, 0, 0, 0.08)';
+    var legendOptions = { position: 'bottom', labels: { boxWidth: 14, padding: 14 } };
+
+    function render(canvasId, config) {
+        var canvas = document.getElementById(canvasId);
+        if (canvas) {
+            new Chart(canvas, config);
+        }
+    }
+
+    var sentiment = payload.sentiment;
+    if (sentiment.has_data) {
+        render('sentimentChart', {
+            type: 'doughnut',
+            data: {
+                labels: sentiment.labels,
+                datasets: [{
+                    data: sentiment.data,
+                    backgroundColor: sentiment.colors,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '62%',
+                plugins: { legend: legendOptions }
+            }
+        });
+    }
+
+    var rating = payload.rating;
+    if (rating.has_data) {
+        render('ratingChart', {
+            type: 'bar',
+            data: {
+                labels: rating.labels,
+                datasets: [{
+                    label: 'Reviews',
+                    data: rating.data,
+                    backgroundColor: rating.colors,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { title: { display: true, text: 'Rating (1-5)' }, grid: { display: false } },
+                    y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: gridColor } }
+                }
+            }
+        });
+    }
+
+    var monthly = payload.monthly;
+    if (monthly.has_data) {
+        render('monthlyChart', {
+            type: 'line',
+            data: {
+                labels: monthly.labels,
+                datasets: [{
+                    label: 'Reviews',
+                    data: monthly.data,
+                    borderColor: '#0d6efd',
+                    backgroundColor: 'rgba(13, 110, 253, 0.15)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { title: { display: true, text: 'Month' }, grid: { display: false } },
+                    y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: gridColor } }
+                }
+            }
+        });
+    }
+
+    var byRating = payload.sentiment_by_rating;
+    if (byRating.has_data) {
+        render('sentimentByRatingChart', {
+            type: 'bar',
+            data: {
+                labels: byRating.labels,
+                datasets: byRating.datasets.map(function (dataset) {
+                    return {
+                        label: dataset.label,
+                        data: dataset.data,
+                        backgroundColor: dataset.color,
+                        borderRadius: 4
+                    };
+                })
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: legendOptions },
+                scales: {
+                    x: { stacked: false, title: { display: true, text: 'Rating (1-5)' }, grid: { display: false } },
+                    y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: gridColor } }
+                }
+            }
+        });
+    }
+})();
+</script>
+{% endblock %}

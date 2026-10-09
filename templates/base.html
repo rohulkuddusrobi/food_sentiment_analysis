@@ -1,0 +1,150 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Customer Sentiment BI Dashboard{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="{% static 'css/dashboard.css' %}" rel="stylesheet">
+</head>
+<body>
+<div class="bi-shell">
+    <aside class="bi-sidebar">
+        <a class="bi-brand" href="{% url 'home' %}">
+            <i class="bi bi-graph-up-arrow"></i>
+            <span>Customer Sentiment BI</span>
+        </a>
+
+        <div class="bi-nav-caption">Analytics</div>
+        <ul class="bi-nav">
+            <li>
+                <a class="bi-nav-link{% if request.resolver_match.url_name == 'home' %} active{% endif %}" href="{% url 'home' %}">
+                    <i class="bi bi-speedometer2"></i>Dashboard Overview
+                </a>
+            </li>
+        </ul>
+
+        <div class="bi-nav-caption">Review Explorer</div>
+        <ul class="bi-nav">
+            <li>
+                <a class="bi-nav-link{% if request.resolver_match.url_name == 'reviews' %} active{% endif %}" href="{% url 'reviews' %}">
+                    <i class="bi bi-funnel"></i>Search &amp; filter reviews
+                </a>
+            </li>
+        </ul>
+
+        <div class="bi-nav-caption">Negative Feedback</div>
+        <ul class="bi-nav">
+            <li>
+                <a class="bi-nav-link{% if request.resolver_match.url_name == 'negative_feedback' %} active{% endif %}" href="{% url 'negative_feedback' %}">
+                    <i class="bi bi-emoji-frown"></i>Negative analysis
+                </a>
+            </li>
+        </ul>
+
+        <div class="bi-nav-caption">Data &amp; ML</div>
+        <ul class="bi-nav">
+            <li>
+                <a class="bi-nav-link{% if request.resolver_match.url_name == 'upload_reviews' %} active{% endif %}" href="{% url 'upload_reviews' %}">
+                    <i class="bi bi-upload"></i>Upload CSV
+                </a>
+            </li>
+            <li>
+                <a class="bi-nav-link{% if request.resolver_match.url_name == 'predict_review' %} active{% endif %}" href="{% url 'predict_review' %}">
+                    <i class="bi bi-cpu"></i>Predict Sentiment
+                </a>
+            </li>
+        </ul>
+
+        <div class="bi-nav-caption">Data source</div>
+        <div class="bi-sidebar-note small">
+            SQLite &middot; Review table<br>
+            Rating-derived sentiment
+        </div>
+
+        <div class="bi-sidebar-footer small">
+            Research demonstration &middot; Phase 6
+        </div>
+    </aside>
+
+    <div class="bi-main">
+        <header class="bi-topbar d-lg-none">
+            <a class="bi-brand" href="{% url 'home' %}">
+                <i class="bi bi-graph-up-arrow"></i><span>Sentiment BI</span>
+            </a>
+            <nav class="bi-topnav" aria-label="Primary">
+                <a href="{% url 'home' %}"><i class="bi bi-speedometer2"></i> Overview</a>
+                <a href="{% url 'reviews' %}"><i class="bi bi-funnel"></i> Reviews</a>
+                <a href="{% url 'negative_feedback' %}"><i class="bi bi-emoji-frown"></i> Negative</a>
+                <a href="{% url 'upload_reviews' %}"><i class="bi bi-upload"></i> Upload</a>
+                <a href="{% url 'predict_review' %}"><i class="bi bi-cpu"></i> Predict</a>
+            </nav>
+        </header>
+
+        <main class="bi-content">
+            {% if messages %}
+            <div class="bi-messages mb-3" role="status" aria-live="polite">
+                {% for message in messages %}
+                {% with tag=message.tags %}
+                <div class="alert alert-{% if tag == 'error' %}danger{% elif tag == 'success' or tag == 'warning' or tag == 'info' %}{{ tag }}{% else %}info{% endif %} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endwith %}
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer class="bi-footer small">
+            Customer Sentiment BI Dashboard &middot; analytics computed from imported review data
+        </footer>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    function reset(form) {
+        form.removeAttribute('data-busy');
+        var button = form.querySelector('button[type="submit"]');
+        if (button && button.dataset.busyLabel) {
+            button.disabled = false;
+            button.innerHTML = button.dataset.busyLabel;
+            delete button.dataset.busyLabel;
+        }
+    }
+
+    document.addEventListener('submit', function (event) {
+        var form = event.target;
+        if (!form.matches('form')) {
+            return;
+        }
+        if (form.getAttribute('data-busy') === '1') {
+            event.preventDefault();
+            return;
+        }
+        var button = form.querySelector('button[type="submit"]');
+        if (!button) {
+            return;
+        }
+        form.setAttribute('data-busy', '1');
+        button.dataset.busyLabel = button.innerHTML;
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Working\u2026';
+    });
+
+    window.addEventListener('pageshow', function (event) {
+        if (event.persisted) {
+            Array.prototype.forEach.call(document.forms, reset);
+        }
+    });
+})();
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

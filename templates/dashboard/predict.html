@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <h1>Predict Sentiment</h1>
+    <p class="page-subtitle">Classify a single customer review with the trained ensemble model.</p>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-0">
+            <div class="card-header">
+                <i class="bi bi-cpu me-2"></i>New prediction
+            </div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="{{ form.text.id_for_label }}" class="form-label">{{ form.text.label }}</label>
+                        {{ form.text }}
+                        {% if form.text.errors %}
+                            <div class="invalid-feedback d-block" role="alert">
+                                {% for error in form.text.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">
+                            Predicted labels: Negative, Neutral, Positive.
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-stars me-1"></i>Predict Sentiment
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 mt-3">
+            <div class="card-header">Model status</div>
+            <div class="card-body small">
+                {% if model_status.loaded %}
+                    <div class="text-success mb-1">
+                        <i class="bi bi-check-circle me-1"></i>Model loaded and ready.
+                    </div>
+                    <div class="text-muted text-break">Model file: {{ model_status.path }}</div>
+                    {% if model_status.warning %}
+                        <div class="text-warning mt-2">
+                            <i class="bi bi-exclamation-triangle me-1"></i>{{ model_status.warning }}
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="text-danger mb-1">
+                        <i class="bi bi-x-circle me-1"></i>Model unavailable.
+                    </div>
+                    <div>{{ model_status.error }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        {% if result %}
+        <div class="card shadow-sm border-0 mb-3">
+            <div class="card-header">Result</div>
+            <div class="card-body">
+                <div class="text-muted small text-uppercase mb-1">Predicted sentiment</div>
+                <div class="mb-3">
+                    {% if result.sentiment == 'Positive' %}
+                        <span class="badge text-bg-success fs-6">{{ result.sentiment }}</span>
+                    {% elif result.sentiment == 'Negative' %}
+                        <span class="badge text-bg-danger fs-6">{{ result.sentiment }}</span>
+                    {% else %}
+                        <span class="badge text-bg-secondary fs-6">{{ result.sentiment }}</span>
+                    {% endif %}
+                </div>
+                <div class="text-muted small text-uppercase mb-1">Review text</div>
+                <p class="mb-0">{{ result.text }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="card shadow-sm border-0">
+            <div class="card-header">
+                Recent predictions
+                <span class="text-muted fw-normal small">(latest {{ history_limit }})</span>
+            </div>
+            {% if history %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 130px;">Sentiment</th>
+                            <th>Review</th>
+                            <th style="width: 170px;">When</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in history %}
+                        <tr>
+                            <td>
+                                {% if item.predicted_sentiment == 'Positive' %}
+                                    <span class="badge text-bg-success">{{ item.predicted_sentiment }}</span>
+                                {% elif item.predicted_sentiment == 'Negative' %}
+                                    <span class="badge text-bg-danger">{{ item.predicted_sentiment }}</span>
+                                {% else %}
+                                    <span class="badge text-bg-secondary">{{ item.predicted_sentiment }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ item.short_text }}</td>
+                            <td class="text-muted small">{{ item.created_at|date:"Y-m-d H:i" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="card-body text-muted">
+                No predictions yet. Submit a review to start the history.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
